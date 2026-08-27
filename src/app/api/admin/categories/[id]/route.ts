@@ -1,0 +1,8 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { execute } from "@/lib/db";
+import { ApiError, requirePermission, withApiError } from "@/lib/api-auth";
+import { generateUniqueSlug } from "@/lib/slugify";
+const idOf = (value: string) => { const id = Number(value); if (!Number.isInteger(id) || id < 1) throw new ApiError(400, "Invalid category id."); return id; };
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) { return withApiError(async () => { await requirePermission(request, "blog", "edit"); const id = idOf(params.id); const parsed = z.object({ name: z.string().min(1).max(100) }).safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Invalid name." }, { status: 400 }); await execute("UPDATE categories SET name = ?, slug = ? WHERE id = ?", [parsed.data.name, await generateUniqueSlug("categories", parsed.data.name, id), id]); return NextResponse.json({ success: true }); }); }
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return withApiError(async () => { await requirePermission(request, "blog", "delete"); const result = await execute("DELETE FROM categories WHERE id = ?", [idOf(params.id)]); if (!result.affectedRows) throw new ApiError(404, "Category not found."); return NextResponse.json({ success: true }); }); }

@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------
+   Design tokens — PRD §14 (light) + §19 / §36.6 (dark)
+   ------------------------------------------------------------ */
+:root {
+  --bg-page: #ffffff;
+  --bg-section: #fafafa;
+  --bg-card: #f5f5f5;
+  --border-color: #e5e5e5;
+
+  --text-primary: #111111;
+  --text-secondary: #6b7280;
+
+  --crimson: #b91c1c;
+  --crimson-hover: #991b1b;
+  --crimson-light: #fee2e2;
+  --crimson-dark-bg: #2d0a0a;
+
+  --watermark: #fee2e2;
+}
+
+.dark {
+  --bg-page: #0a0a0a;
+  --bg-section: #111111;
+  --bg-card: #1a1a1a;
+  --border-color: #2a2a2a;
+
+  --text-primary: #f5f5f5;
+  --text-secondary: #9ca3af;
+
+  --crimson: #dc2626;
+  --crimson-hover: #f87171;
+  --crimson-light: #2d0a0a;
+  --crimson-dark-bg: #2d0a0a;
+
+  --watermark: #1a0505;
+}
+
+* {
+  border-color: var(--border-color);
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

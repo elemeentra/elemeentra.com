@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { execute } from "@/lib/db";
+import { ApiError, requirePermission, withApiError } from "@/lib/api-auth";
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return withApiError(async () => { await requirePermission(request, "blog", "delete"); const id = Number(params.id); if (!Number.isInteger(id) || id < 1) throw new ApiError(400, "Invalid tag id."); const result = await execute("DELETE FROM tags WHERE id = ?", [id]); if (!result.affectedRows) throw new ApiError(404, "Tag not found."); return NextResponse.json({ success: true }); }); }
