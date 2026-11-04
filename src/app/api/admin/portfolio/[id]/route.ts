@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseJsonColumn } from "@/lib/json-column";
 import { z } from "zod";
 import { query, execute, type RowDataPacket } from "@/lib/db";
 import { requirePermission, withApiError, ApiError } from "@/lib/api-auth";
@@ -16,7 +17,12 @@ const projectSchema = z.object({
   image_url: z.string().max(255).optional().nullable(),
   gallery_images: z.array(z.string()).optional().default([]),
   tech_tags: z.array(z.string()).optional().default([]),
-  project_url: z.string().max(255).optional().nullable(),
+  project_url: z
+    .string()
+    .max(255)
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^https?:\/\//i.test(v), { message: "Project URL must start with http:// or https://" }),
   results: z.string().optional().nullable(),
   featured: z.boolean().optional().default(false),
   display_order: z.number().int().optional().default(0),
@@ -59,8 +65,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({
       project: {
         ...project,
-        gallery_images: project.gallery_images ? JSON.parse(project.gallery_images) : [],
-        tech_tags: project.tech_tags ? JSON.parse(project.tech_tags) : [],
+        gallery_images: parseJsonColumn<string[]>(project.gallery_images, []),
+        tech_tags: parseJsonColumn<string[]>(project.tech_tags, []),
         featured: Boolean(project.featured),
       },
     });

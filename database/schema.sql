@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS posts (
   canonical_url VARCHAR(255),
   robots_index BOOLEAN NOT NULL DEFAULT TRUE,
   robots_follow BOOLEAN NOT NULL DEFAULT TRUE,
+  faq_schema JSON DEFAULT NULL COMMENT 'Array of {id, question, answer} objects for FAQPage schema',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
@@ -236,7 +237,6 @@ CREATE TABLE IF NOT EXISTS reviews (
   review_title VARCHAR(255),
   review_text TEXT,
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-  featured BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

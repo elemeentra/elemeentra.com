@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getEnv } from "@/lib/env";
-import { verifySessionToken } from "@/lib/jwt";
+import { getFreshSessionCached } from "@/lib/api-auth";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
+import { AdminBoot } from "@/components/admin/AdminBoot";
+import { getBrand } from "@/lib/branding";
 
 export default async function ProtectedAdminLayout({
   children,
@@ -12,7 +14,41 @@ export default async function ProtectedAdminLayout({
 }) {
   const env = getEnv();
   const token = cookies().get(env.COOKIE_NAME)?.value;
-  const session = token ? await verifySessionToken(token) : null;
+
+  let session = null;
+  try {
+    session = token ? await getFreshSessionCached() : null;
+  } catch (err: unknown) {
+    // DB unreachable (ETIMEDOUT, ECONNREFUSED, etc.) — show a proper error
+    // page instead of an unhandled runtime crash.
+    const isConnErr =
+      err instanceof Error &&
+      (err.message.includes("ETIMEDOUT") ||
+        err.message.includes("ECONNREFUSED") ||
+        err.message.includes("ENOTFOUND") ||
+        err.message.includes("connect"));
+
+    if (isConnErr) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-surface p-8">
+          <div className="max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-lg">
+            <div className="mb-4 text-4xl">⚠️</div>
+            <h1 className="mb-2 text-xl font-bold text-foreground">Database Unreachable</h1>
+            <p className="mb-4 text-sm text-muted">
+              The admin panel cannot connect to the database right now. This usually means the
+              database server is offline, or remote connections are blocked by the hosting
+              firewall.
+            </p>
+            <p className="text-xs text-muted">
+              <strong>For Hostinger:</strong> Go to hPanel → Databases → Remote MySQL → add your
+              current IP address to allow connections.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    throw err; // re-throw unexpected errors
+  }
 
   // The middleware already redirects unauthenticated requests before this
   // layout ever renders. This check is a defense-in-depth backstop in case
@@ -22,13 +58,27 @@ export default async function ProtectedAdminLayout({
   }
 
   const isSuperAdmin = session.roleName === "Super Admin";
+  const brand = await getBrand(); // cached — no DB hit on most requests
 
   return (
-    <div className="flex min-h-screen bg-surface">
-      <Sidebar permissions={session.permissions} isSuperAdmin={isSuperAdmin} />
-      <div className="flex flex-1 flex-col">
-        <Topbar name={session.name} role={session.roleName} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+    <div className="admin-shell">
+      <AdminBoot />
+      <Sidebar
+        permissions={session.permissions}
+        isSuperAdmin={isSuperAdmin}
+        brand={{ siteName: brand.siteName, logoUrl: brand.logoUrl, showText: brand.showText }}
+      />
+      <div className="adm-main">
+        <Topbar
+          name={session.name}
+          role={session.roleName}
+          photo={session.profilePhoto ?? null}
+          userId={session.userId ?? null}
+          permissions={session.permissions}
+          isSuperAdmin={isSuperAdmin}
+        />
+        {/* No overflow here: an overflow-* ancestor would break position:sticky (editor toolbar). */}
+        <main className="adm-content">{children}</main>
       </div>
     </div>
   );

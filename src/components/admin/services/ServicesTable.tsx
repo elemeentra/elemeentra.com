@@ -1,5 +1,6 @@
 "use client";
 
+import { getJson, peek } from "@/lib/admin-cache";
 import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import {
@@ -64,16 +65,20 @@ export function ServicesTable() {
   const [quickEditSaving, setQuickEditSaving] = useState(false);
 
   const load = useCallback(async (q: string, p: number) => {
-    setLoading(true);
+    const params = new URLSearchParams({ page: String(p) });
+    if (q) params.set("search", q);
+    const url = `/api/admin/services?${params.toString()}`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apply = (data: any) => {
+      setServices(data.services);
+      setPagination(data.pagination);
+    };
+    const hit = peek(url);
+    if (hit) apply(hit);
+    setLoading(!hit);
     try {
-      const params = new URLSearchParams({ page: String(p) });
-      if (q) params.set("search", q);
-      const res = await fetch(`/api/admin/services?${params.toString()}`);
-      const data = await res.json();
-      if (res.ok) {
-        setServices(data.services);
-        setPagination(data.pagination);
-      }
+      const res = await getJson(url);
+      if (res.ok) apply(res.data);
     } finally {
       setLoading(false);
     }

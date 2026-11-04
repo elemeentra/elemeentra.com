@@ -43,6 +43,9 @@ export type PermissionMap = Partial<Record<PermissionModule, PermissionAction[]>
 
 const ALL_ACTIONS = [...PERMISSION_ACTIONS];
 
+/** Everything except destructive ("delete") and structural ("manage") actions. */
+const CONTENT_ACTIONS = ALL_ACTIONS.filter((a) => a !== "delete" && a !== "manage");
+
 const fullAccess = (): PermissionMap =>
   Object.fromEntries(PERMISSION_MODULES.map((m) => [m, ALL_ACTIONS])) as PermissionMap;
 
@@ -56,35 +59,39 @@ export const SYSTEM_ROLES: { name: string; permissions: PermissionMap }[] = [
     permissions: fullAccess(),
   },
   {
+    // CEO: broad working rights, but one level below Admin — no destructive
+    // (delete) or structural (manage) actions. Users/Settings stay Super Admin only.
     name: "CEO",
     permissions: {
       dashboard: ["view"],
-      analytics: ["view"],
-      portfolio: ["view", "approve"],
-      blog: ["view", "approve"],
-      services: ["view"],
-      reviews: ["view", "approve"],
-      contacts: ["view"],
-      newsletter: ["view"],
-      media: ["view"],
-      comments: ["view", "approve"],
-      team: ["view"],
+      analytics: ["view", "export"],
+      portfolio: [...CONTENT_ACTIONS],
+      blog: [...CONTENT_ACTIONS],
+      services: [...CONTENT_ACTIONS],
+      reviews: [...CONTENT_ACTIONS],
+      contacts: [...CONTENT_ACTIONS],
+      newsletter: [...CONTENT_ACTIONS],
+      media: [...CONTENT_ACTIONS],
+      comments: [...CONTENT_ACTIONS],
+      team: ["view", "create", "edit"],
     },
   },
   {
+    // Admin: every action on every content module. Users and Settings are
+    // hard-locked to Super Admin in hasPermission() (privilege-escalation guard).
     name: "Admin",
     permissions: {
       dashboard: ["view"],
-      analytics: ["view"],
-      portfolio: ["view", "create", "edit", "delete"],
-      blog: ["view", "create", "edit", "delete", "publish"],
-      services: ["view", "create", "edit", "delete"],
-      reviews: ["view", "approve", "delete"],
-      contacts: ["view", "reply", "delete"],
-      newsletter: ["view", "export", "delete"],
-      media: ["view", "upload", "delete"],
-      comments: ["view", "approve", "delete"],
-      team: ["view", "manage"],
+      analytics: ["view", "export"],
+      portfolio: [...ALL_ACTIONS],
+      blog: [...ALL_ACTIONS],
+      services: [...ALL_ACTIONS],
+      reviews: [...ALL_ACTIONS],
+      contacts: [...ALL_ACTIONS],
+      newsletter: [...ALL_ACTIONS],
+      media: [...ALL_ACTIONS],
+      comments: [...ALL_ACTIONS],
+      team: [...ALL_ACTIONS],
     },
   },
   {
@@ -116,7 +123,10 @@ export const SYSTEM_ROLES: { name: string; permissions: PermissionMap }[] = [
 ];
 
 /** Modules that only Super Admin may touch, regardless of what a custom role grants. */
-const SUPER_ADMIN_ONLY: PermissionModule[] = ["users", "settings"];
+export const SUPER_ADMIN_ONLY: PermissionModule[] = ["users", "settings"];
+
+/** The one role that bypasses permission maps. Matched by name in api-auth, so the name is reserved. */
+export const SUPER_ADMIN_ROLE = "Super Admin";
 
 export function hasPermission(
   permissions: PermissionMap,

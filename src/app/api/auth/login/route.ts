@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     name: user.name,
     roleId: user.role_id,
     roleName: user.role_name,
-    permissions: JSON.parse(user.permissions),
+    permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions,
   });
 
   cookies().set(env.COOKIE_NAME, token, {

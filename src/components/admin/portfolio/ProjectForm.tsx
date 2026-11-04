@@ -5,8 +5,15 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, Star, ExternalLink, ImageOff } from "lucide-react";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import dynamic from "next/dynamic";
 import { useAdminBase } from "@/lib/use-admin-base";
+
+// Tiptap is large — load it only when the form opens, not with the page shell.
+const RichTextEditor = dynamic(() => import("@/components/admin/RichTextEditor").then((m) => m.RichTextEditor), {
+  ssr: false,
+  loading: () => <div className="h-72 animate-pulse rounded-lg bg-surface" aria-hidden />,
+});
+
 
 export interface ProjectFormData {
   title: string;
@@ -153,6 +160,8 @@ export function ProjectForm({ mode, projectId, initialData }: ProjectFormProps) 
               label=""
               value={form.image_url}
               onChange={(url) => update("image_url", url)}
+              aspect={16 / 9}
+              cropTitle="Crop cover image"
             />
           </Section>
 
@@ -289,7 +298,7 @@ export function ProjectForm({ mode, projectId, initialData }: ProjectFormProps) 
 
         {/* Live preview column */}
         <div className="lg:col-span-1">
-          <div className="sticky top-6">
+          <div className="sticky top-[calc(var(--topbar-h,88px)+16px)]">
             <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted">Live Preview</p>
             <PreviewCard form={form} />
           </div>

@@ -14,6 +14,8 @@ export interface SessionPayload extends JWTPayload {
   roleId: number;
   roleName: string;
   permissions: Record<string, string[]>;
+  /** Filled from the DB on every fresh session lookup (not stored in the JWT). */
+  profilePhoto?: string | null;
 }
 
 function getSecretKey(): Uint8Array {

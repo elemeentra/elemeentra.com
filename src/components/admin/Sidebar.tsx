@@ -1,136 +1,98 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  BarChart3,
-  Newspaper,
-  Briefcase,
-  Layers,
-  Star,
-  Mail,
-  MessageSquare,
-  Send,
-  Images,
-  Users,
-  UserSquare2,
-  Settings,
-  Search,
-} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAdminBase } from "@/lib/use-admin-base";
+import { warm } from "@/lib/admin-cache";
+import { BrandLogo, type BrandProps } from "@/components/brand/BrandLogo";
+import { NAV_GROUPS } from "@/components/admin/admin-nav";
 import type { PermissionMap, PermissionModule } from "@/lib/permissions";
 
-interface NavItem {
-  label: string;
-  href: string; // relative to admin base, e.g. "dashboard"
-  icon: React.ComponentType<{ className?: string }>;
-  module: PermissionModule;
-}
-
-interface NavGroup {
-  heading?: string;
-  items: NavItem[];
-}
-
-// Order matches PRD §35 exactly.
-const NAV_GROUPS: NavGroup[] = [
-  {
-    items: [
-      { label: "Dashboard", href: "dashboard", icon: LayoutDashboard, module: "dashboard" },
-      { label: "Analytics", href: "analytics", icon: BarChart3, module: "analytics" },
-    ],
-  },
-  {
-    heading: "Content",
-    items: [
-      { label: "Blog / Posts", href: "blog", icon: Newspaper, module: "blog" },
-      { label: "Portfolio", href: "portfolio", icon: Briefcase, module: "portfolio" },
-      { label: "Services", href: "services", icon: Layers, module: "services" },
-      { label: "Reviews", href: "reviews", icon: Star, module: "reviews" },
-    ],
-  },
-  {
-    heading: "Engagement",
-    items: [
-      { label: "Contacts", href: "contacts", icon: Mail, module: "contacts" },
-      { label: "Comments", href: "comments", icon: MessageSquare, module: "comments" },
-      { label: "Newsletter", href: "newsletter", icon: Send, module: "newsletter" },
-    ],
-  },
-  {
-    heading: "Media",
-    items: [{ label: "Media Library", href: "media", icon: Images, module: "media" }],
-  },
-  {
-    heading: "People",
-    items: [
-      { label: "Users & Roles", href: "users", icon: Users, module: "users" },
-      { label: "Team", href: "team", icon: UserSquare2, module: "team" },
-    ],
-  },
-  {
-    heading: "System",
-    items: [
-      { label: "Settings", href: "settings", icon: Settings, module: "settings" },
-      { label: "SEO Settings", href: "settings/seo", icon: Search, module: "settings" },
-    ],
-  },
-];
-
-export function Sidebar({ permissions, isSuperAdmin }: { permissions: PermissionMap; isSuperAdmin: boolean }) {
+export function Sidebar({
+  permissions,
+  isSuperAdmin,
+  brand,
+}: {
+  permissions: PermissionMap;
+  isSuperAdmin: boolean;
+  brand: BrandProps;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const adminBase = useAdminBase();
 
   const canSee = (mod: PermissionModule) => isSuperAdmin || (permissions[mod]?.length ?? 0) > 0;
 
-  return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card">
-      <div className="flex items-center gap-2 border-b border-border px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-crimson text-sm font-black text-white">
-          E
-        </div>
-        <span className="text-sm font-bold tracking-tight text-foreground">Elemeentra CMS</span>
-      </div>
+  // One item is active at a time: the most specific match. Without this,
+  // "Settings" (settings) would also light up on "SEO Settings" (settings/seo).
+  const activeHref = NAV_GROUPS.flatMap((g) => g.items.map((i) => `${adminBase}/${i.href}`))
+    .filter((h) => pathname === h || pathname.startsWith(`${h}/`))
+    .sort((a, b) => b.length - a.length)[0];
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+  return (
+    <aside className="adm-sidebar" aria-label="Admin navigation">
+      <Link href={`${adminBase}/dashboard`} className="adm-brand" aria-label={`${brand.siteName} dashboard`}>
+        {/* Logo + name come from Settings → General; "show text" off = logo only */}
+        <BrandLogo
+          siteName={`${brand.siteName} CMS`}
+          logoUrl={brand.logoUrl}
+          showText={brand.showText}
+          size={42}
+          priority
+          textClassName="text-[15px] font-bold tracking-tight text-white"
+          subtitle="Build · Manage · Grow"
+          subtitleClassName="mt-0.5 text-[10px] tracking-[0.35px] text-[#b9aeb1]"
+          textWrapClassName="adm-brand-text"
+        />
+      </Link>
+
+      <nav>
         {NAV_GROUPS.map((group, i) => {
           const visibleItems = group.items.filter((item) => canSee(item.module));
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={i} className="mb-4">
-              {group.heading && (
-                <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  {group.heading}
-                </p>
-              )}
-              <ul className="space-y-0.5">
-                {visibleItems.map((item) => {
-                  const href = `${adminBase}/${item.href}`;
-                  const active = pathname === href || pathname.startsWith(`${href}/`);
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                          active
-                            ? "bg-crimson-light text-crimson"
-                            : "text-foreground/80 hover:bg-surface hover:text-foreground"
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            <div key={i} className="adm-nav-group">
+              {group.heading && <div className="adm-nav-label">{group.heading}</div>}
+              {visibleItems.map((item) => {
+                const href = `${adminBase}/${item.href}`;
+                const active = href === activeHref;
+                const Icon = item.icon;
+                // Hover/focus = intent to click: fetch the page's code and its list data now.
+                const warmUp = () => {
+                  router.prefetch(href);
+                  if (item.warm) warm(`${item.warm}?page=1`);
+                };
+                return (
+                  <Link
+                    key={item.href}
+                    href={href}
+                    prefetch
+                    title={item.label}
+                    aria-current={active ? "page" : undefined}
+                    onMouseEnter={warmUp}
+                    onFocus={warmUp}
+                    onTouchStart={warmUp}
+                    className={`adm-nav-link${active ? " active" : ""}`}
+                  >
+                    <Icon aria-hidden />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           );
         })}
       </nav>
+
+      <div className="adm-sidebar-bottom">
+        <p className="adm-security">
+          Security by{" "}
+          <a href="https://sigintrecon.com/" target="_blank" rel="noopener noreferrer">
+            Sigintrecon
+          </a>
+        </p>
+      </div>
     </aside>
   );
 }

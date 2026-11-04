@@ -1,5 +1,6 @@
 "use client";
 
+import { useImageCropper } from "@/components/admin/ImageCropModal";
 import { useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -38,6 +39,7 @@ export function RichTextEditor({
   allowImages = false,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { crop, cropper } = useImageCropper();
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const editor = useEditor({
@@ -81,7 +83,12 @@ export function RichTextEditor({
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }
 
-  async function handleImageFile(file: File) {
+  async function handleImageFile(original: File) {
+    const file = await crop(original, { title: "Crop & adjust image" });
+    if (!file) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     setUploadingImage(true);
     try {
       const formData = new FormData();
@@ -98,8 +105,8 @@ export function RichTextEditor({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background transition focus-within:border-crimson">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-surface/50 p-1.5">
+    <div className="rounded-lg border border-border bg-background transition focus-within:border-crimson">
+      <div className="sticky top-[var(--topbar-h,88px)] z-20 flex flex-wrap items-center gap-0.5 rounded-t-[7px] border-b border-border bg-surface p-1.5">
         <ToolbarButton active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading">
           <Heading2 className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -129,7 +136,9 @@ export function RichTextEditor({
         <ToolbarButton active={editor.isActive("link")} onClick={setLink} title="Link">
           <LinkIcon className="h-3.5 w-3.5" />
         </ToolbarButton>
-        {allowImages && (
+        {cropper}
+
+      {allowImages && (
           <ToolbarButton onClick={() => fileInputRef.current?.click()} title="Insert image">
             {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
           </ToolbarButton>

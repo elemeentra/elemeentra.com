@@ -35,5 +35,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# environment variables
-.env
+# user-uploaded media (stored on the server, not in git)
+/public/uploads

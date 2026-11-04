@@ -1,2 +1,5 @@
-import { BlogForm } from "@/components/admin/blog/BlogForm";
-export default function NewBlogPage() { return <BlogForm mode="create" />; }
+import { AdvancedBlogForm } from "@/components/admin/blog/AdvancedBlogForm";
+
+export default function NewPostPage() {
+  return <AdvancedBlogForm mode="create" />;
+}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { parseJsonColumn } from "@/lib/json-column";
 import { query, type RowDataPacket } from "@/lib/db";
 import { ServiceForm, type ServiceFormData } from "@/components/admin/services/ServiceForm";
 
@@ -26,7 +27,7 @@ export default async function EditServicePage({ params }: { params: { id: string
     title: service.title,
     short_description: service.short_description ?? "",
     full_description: service.full_description ?? "",
-    benefits: service.benefits ? JSON.parse(service.benefits) : [],
+    benefits: parseJsonColumn<string[]>(service.benefits, []),
     status: service.status,
     display_order: service.display_order,
   };

@@ -1,28 +1,86 @@
 import { notFound } from "next/navigation";
+import { parseJsonColumn } from "@/lib/json-column";
 import { query, type RowDataPacket } from "@/lib/db";
-import { BlogForm, type BlogFormData } from "@/components/admin/blog/BlogForm";
+import { AdvancedBlogForm, type AdvancedBlogFormData } from "@/components/admin/blog/AdvancedBlogForm";
+import { type FaqItem } from "@/components/admin/blog/FaqSchemaBuilder";
 
-interface PostRow extends RowDataPacket {
-	id: number;
-	title: string;
-	content: string | null;
-	excerpt: string | null;
-	featured_image: string | null;
-	category_id: number | null;
-	meta_title: string | null;
-	meta_description: string | null;
-	status: BlogFormData["status"];
-	scheduled_at: string | null;
-	tags: string | null;
+interface FullPostRow extends RowDataPacket {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  canonical_url: string | null;
+  robots_index: number | boolean;
+  robots_follow: number | boolean;
+  og_image: string | null;
+  og_title?: string | null;
+  og_description?: string | null;
+  featured_image: string | null;
+  status: "draft" | "pending" | "published" | "scheduled" | "trash";
+  published_at: string | null;
+  author_id: number | null;
+  focus_keyword: string | null;
+  faq_schema: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export default async function EditBlogPage({ params }: { params: { id: string } }) {
-	const id = Number(params.id);
-	if (!Number.isInteger(id) || id <= 0) notFound();
-	const rows = await query<PostRow>(`SELECT p.id, p.title, p.content, p.excerpt, p.featured_image, pc.category_id, p.meta_title, p.meta_description, p.status, p.scheduled_at, COALESCE(JSON_ARRAYAGG(CASE WHEN t.id IS NULL THEN NULL ELSE JSON_OBJECT('id', t.id, 'name', t.name) END), JSON_ARRAY()) AS tags FROM posts p LEFT JOIN post_categories pc ON pc.post_id = p.id LEFT JOIN post_tags pt ON pt.post_id = p.id LEFT JOIN tags t ON t.id = pt.tag_id WHERE p.id = ? GROUP BY p.id, pc.category_id`, [id]);
-	const post = rows[0];
-	if (!post) notFound();
-	const tags = typeof post.tags === "string" ? JSON.parse(post.tags).filter(Boolean) : post.tags ?? [];
-	const initialData: Partial<BlogFormData> = { title: post.title, content: post.content ?? "", excerpt: post.excerpt ?? "", featured_image: post.featured_image, category_id: post.category_id, tags, meta_title: post.meta_title ?? "", meta_description: post.meta_description ?? "", status: ["draft", "published", "scheduled"].includes(post.status) ? post.status : "draft", scheduled_at: post.scheduled_at };
-	return <div><div className="mb-6"><h1 className="text-2xl font-bold">Edit Post</h1><p className="mt-1 text-sm text-muted">{post.title}</p></div><BlogForm mode="edit" postId={post.id} initialData={initialData} /></div>;
+interface TagRow extends RowDataPacket {
+  id: number;
+}
+
+export default async function EditPostPage({ params }: { params: { id: string } }) {
+  const id = Number(params.id);
+  if (!Number.isInteger(id) || id <= 0) notFound();
+
+  const rows = await query<FullPostRow>("SELECT * FROM posts WHERE id = ? LIMIT 1", [id]);
+  const post = rows[0];
+  if (!post) notFound();
+
+  const tagRows = await query<TagRow>(
+    `SELECT t.id FROM tags t
+     INNER JOIN post_tags pt ON t.id = pt.tag_id
+     WHERE pt.post_id = ?`,
+    [id]
+  );
+  const tags = tagRows.map((r) => r.id);
+
+  const categoryRows = await query<TagRow>(
+    `SELECT c.id FROM categories c
+     INNER JOIN post_categories pc ON c.id = pc.category_id
+     WHERE pc.post_id = ?`,
+    [id]
+  );
+  const category_ids = categoryRows.map((r) => r.id);
+
+  const faqSchema: FaqItem[] = parseJsonColumn<FaqItem[]>(post.faq_schema, []);
+
+  const initialData: Partial<AdvancedBlogFormData> = {
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt ?? "",
+    content: post.content,
+    meta_title: post.meta_title ?? "",
+    meta_description: post.meta_description ?? "",
+    canonical_url: post.canonical_url ?? "",
+    robots_index: Boolean(post.robots_index),
+    robots_follow: Boolean(post.robots_follow),
+    og_image: post.og_image ?? "",
+    og_title: post.og_title ?? "",
+    og_description: post.og_description ?? "",
+    featured_image: post.featured_image ?? "",
+    category_ids,
+    tags,
+    // a trashed post reopens as a draft (restore + edit)
+    status: post.status === "trash" ? "draft" : post.status,
+    published_at: post.published_at ?? "",
+    author_id: post.author_id,
+    focus_keyword: post.focus_keyword ?? "",
+    faq_schema: faqSchema,
+  };
+
+  return <AdvancedBlogForm mode="edit" postId={post.id} initialData={initialData} />;
 }

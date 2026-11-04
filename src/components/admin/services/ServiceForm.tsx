@@ -4,9 +4,16 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, X } from "lucide-react";
 import { IconPicker } from "@/components/admin/IconPicker";
-import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import dynamic from "next/dynamic";
 import { resolveIcon } from "@/lib/icon-map";
 import { useAdminBase } from "@/lib/use-admin-base";
+
+// Tiptap is large — load it only when the form opens, not with the page shell.
+const RichTextEditor = dynamic(() => import("@/components/admin/RichTextEditor").then((m) => m.RichTextEditor), {
+  ssr: false,
+  loading: () => <div className="h-72 animate-pulse rounded-lg bg-surface" aria-hidden />,
+});
+
 
 export interface ServiceFormData {
   icon: string;
@@ -210,7 +217,7 @@ export function ServiceForm({ mode, serviceId, initialData }: ServiceFormProps) 
         </div>
 
         <div className="lg:col-span-1">
-          <div className="sticky top-6">
+          <div className="sticky top-[calc(var(--topbar-h,88px)+16px)]">
             <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted">Live Preview</p>
             <PreviewCard form={form} />
           </div>

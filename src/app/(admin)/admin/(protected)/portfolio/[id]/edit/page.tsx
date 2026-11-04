@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { parseJsonColumn } from "@/lib/json-column";
 import { query, type RowDataPacket } from "@/lib/db";
 import { paragraphsToText } from "@/lib/sanitize";
 import { ProjectForm, type ProjectFormData } from "@/components/admin/portfolio/ProjectForm";
@@ -38,8 +39,8 @@ export default async function EditProjectPage({ params }: { params: { id: string
     solution: paragraphsToText(project.solution),
     result_summary: project.result_summary ?? "",
     image_url: project.image_url,
-    gallery_images: project.gallery_images ? JSON.parse(project.gallery_images) : [],
-    tech_tags: project.tech_tags ? JSON.parse(project.tech_tags) : [],
+    gallery_images: parseJsonColumn<string[]>(project.gallery_images, []),
+    tech_tags: parseJsonColumn<string[]>(project.tech_tags, []),
     project_url: project.project_url ?? "",
     results: paragraphsToText(project.results),
     featured: Boolean(project.featured),

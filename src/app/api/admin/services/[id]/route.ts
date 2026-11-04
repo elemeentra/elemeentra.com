@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseJsonColumn } from "@/lib/json-column";
 import { z } from "zod";
 import { query, execute, type RowDataPacket } from "@/lib/db";
 import { requirePermission, withApiError, ApiError } from "@/lib/api-auth";
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({
       service: {
         ...service,
-        benefits: service.benefits ? JSON.parse(service.benefits) : [],
+        benefits: parseJsonColumn<string[]>(service.benefits, []),
       },
     });
   });
